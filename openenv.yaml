@@ -1,0 +1,192 @@
+name: ai-code-review-openenv
+version: "1.0.0"
+description: >
+  An OpenEnv environment that simulates a real-world AI-powered code review
+  workflow. An agent reviews pull requests, detects bugs (syntax, logic,
+  security, performance), suggests fixes, and proposes code improvements.
+  Three tasks of increasing difficulty exercise progressively harder bugs.
+
+author: OpenEnv Hackathon
+license: MIT
+tags:
+  - openenv
+  - code-review
+  - software-engineering
+  - ai-agent
+  - real-world
+
+# ---------------------------------------------------------------------------
+#                                  Action space
+# ---------------------------------------------------------------------------
+action_space:
+  type: discrete_with_params
+  actions:
+    - name: analyze_code
+      description: Trigger a full analysis pass of the code snippet.
+      params: []
+
+    - name: flag_bug
+      description: Flag a specific bug in the code.
+      params:
+        - name: target
+          type: string
+          description: Short label or bug ID for the issue.
+        - name: description
+          type: string
+          description: Detailed description of the bug found.
+        - name: line_number
+          type: integer
+          optional: true
+          description: The line where the bug occurs.
+
+    - name: suggest_fix
+      description: Suggest a concrete fix for a previously flagged bug.
+      params:
+        - name: target
+          type: string
+          description: The bug label this fix addresses.
+        - name: description
+          type: string
+          description: The suggested fix (code or explanation).
+
+    - name: suggest_improvement
+      description: Suggest a non-bug code improvement (readability, style, perf).
+      params:
+        - name: description
+          type: string
+          description: The improvement suggestion.
+
+    - name: approve_pr
+      description: Approve the pull request (closes the episode).
+      params: []
+
+    - name: request_changes
+      description: Request changes and close the review episode.
+      params:
+        - name: description
+          type: string
+          optional: true
+          description: Summary of why changes are needed.
+
+# ---------------------------------------------------------------------------
+#                                  Observation space
+# ---------------------------------------------------------------------------
+observation_space:
+  type: structured
+  fields:
+    - name: task_id
+      type: string
+      description: Identifier of the current task.
+    - name: task_goal
+      type: string
+      description: Natural-language description of what the agent must do.
+    - name: code_snippet
+      type: string
+      description: The Python code under review.
+    - name: detected_issues
+      type: array
+      description: Bugs flagged so far in this episode.
+    - name: suggested_fixes
+      type: array
+      description: Fixes proposed so far.
+    - name: suggested_improvements
+      type: array
+      description: Improvement suggestions proposed so far.
+    - name: review_history
+      type: array
+      description: Chronological list of (action, reward, message) entries.
+    - name: remaining_steps
+      type: integer
+      description: Steps remaining before the episode is force-terminated.
+    - name: pr_approved
+      type: boolean
+      description: True if the PR was approved.
+    - name: pr_changes_requested
+      type: boolean
+      description: True if changes were requested.
+    - name: cumulative_reward
+      type: float
+      description: Total reward accumulated in this episode.
+    - name: message
+      type: string
+      description: Human-readable feedback on the last action.
+
+# ---------------------------------------------------------------------------
+#                                  Reward structure
+# ---------------------------------------------------------------------------
+reward:
+  type: shaped
+  components:
+    - event: analyze_code (first time)
+      value: +0.05
+    - event: correct bug detection
+      value: +0.20
+    - event: correct fix suggestion
+      value: +0.30
+    - event: correct improvement suggestion
+      value: +0.10
+    - event: wrong bug flag
+      value: -0.10
+    - event: repeated/duplicate action
+      value: -0.10
+    - event: irrelevant / unknown action
+      value: -0.05
+    - event: full completion (all bugs found + approve)
+      value: +1.00
+
+# ---------------------------------------------------------------------------
+#                                       Tasks
+# ---------------------------------------------------------------------------
+tasks:
+  - id: task_1
+    title: "Fix the Off-by-One Syntax Bug"
+    difficulty: easy
+    max_steps: 15
+    description: >
+      Detect and fix a classic off-by-one error inside a Python loop
+      that causes an IndexError. Suggest a Pythonic improvement using
+      the built-in sum().
+    grading_weights:
+      bugs: 0.50
+      fixes: 0.30
+      improvements: 0.20
+
+  - id: task_2
+    title: "Fix Logic Bug and Optimize Search"
+    difficulty: medium
+    max_steps: 20
+    description: >
+      Detect a logic bug (wrong loop range) and a performance issue
+      (O(n²) nested loops) in a duplicate-finding function. Suggest
+      fixes and propose a Counter-based O(n) alternative.
+    grading_weights:
+      bugs: 0.50
+      fixes: 0.30
+      improvements: 0.20
+
+  - id: task_3
+    title: "Multi-Bug: SQL Injection, Logic Error, and N+1 Query"
+    difficulty: hard
+    max_steps: 25
+    description: >
+      Detect three issues in a database helper: an SQL injection
+      vulnerability, a wrong pagination offset, and an N+1 query
+      anti-pattern. Suggest fixes and propose DB best-practice
+      improvements.
+    grading_weights:
+      bugs: 0.50
+      fixes: 0.30
+      improvements: 0.20
+
+# ---------------------------------------------------------------------------
+#                                Deployment
+# ---------------------------------------------------------------------------
+docker_image: "openenv/ai-code-review:latest"
+entrypoint: "uvicorn app:app --host 0.0.0.0 --port 7860"
+
+api:
+  reset: "POST /reset"
+  step:  "POST /step"
+  state: "GET  /state"
+  health: "GET /health"
+  tasks: "GET /tasks"
