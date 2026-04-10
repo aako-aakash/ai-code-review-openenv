@@ -216,7 +216,7 @@ git push origin main
 
 4. Run inference against the HF Space:
 ```bash
-export ENV_BASE_URL="https://YOUR_USER-ai-code-review-openenv.hf.space"
+export ENV_BASE_URL="https://aakoaakash-ai-code-review-openenv.hf.space"
 python inference.py
 ```
 
