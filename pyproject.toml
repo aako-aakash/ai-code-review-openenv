@@ -1,0 +1,25 @@
+[project]
+name = "ai-code-review-openenv"
+version = "0.1.0"
+description = "AI powered code review system using OpenEnv and LLMs"
+authors = [
+    { name = "Aakash Kumar Saw" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "openai",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-dotenv",
+    "docker"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
